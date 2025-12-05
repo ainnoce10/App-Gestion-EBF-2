@@ -615,7 +615,7 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess: () => void }) => {
         } else {
              // NO SESSION = CONFIRMATION REQUIRED BY SERVER
              setIsSignUp(false);
-             setSuccessMsg("Inscription réussie ! Si la connexion échoue, vérifiez vos emails pour valider le compte.");
+             setSuccessMsg("Inscription réussie ! Vérifiez vos emails pour valider le compte avant de vous connecter.");
         }
 
       } else {
@@ -633,7 +633,7 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess: () => void }) => {
         const msg = err.message || err.error_description || JSON.stringify(err);
 
         if (msg.includes("Invalid login credentials") || msg.includes("invalid_grant")) {
-            userMsg = "Email ou mot de passe incorrect (ou email non confirmé par le serveur).";
+            userMsg = "Email ou mot de passe incorrect.";
         } else if (msg.includes("Email not confirmed")) {
             userMsg = "Votre email n'est pas encore confirmé. Vérifiez votre boîte mail (et les spams).";
         } else if (msg.includes("User already registered")) {
@@ -659,7 +659,7 @@ const LoginScreen = ({ onLoginSuccess }: { onLoginSuccess: () => void }) => {
        <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-orange-500/10 pointer-events-none"></div>
        <div className="glass-panel p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-md relative overflow-hidden animate-fade-in border-t-4 border-ebf-orange">
           <div className="flex flex-col items-center mb-8">
-             {/* Logo sans rounded-full */}
+             {/* Logo SANS rounded-full - Square container */}
              <div className="bg-white p-4 shadow-lg mb-4">
                  <EbfLogo size="normal" />
              </div>
@@ -1191,98 +1191,6 @@ const AppContent = ({ session, onLogout, userRole, userProfile }: any) => {
 
   const { canWrite } = getPermission(currentPath, userRole);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      // Existing
-      const { data: intervData } = await supabase.from('interventions').select('*');
-      if (intervData) setInterventions(intervData);
-      const { data: stockData } = await supabase.from('stocks').select('*');
-      if (stockData) setStock(stockData);
-      const { data: techData } = await supabase.from('technicians').select('*');
-      if (techData) setTechnicians(techData);
-      const { data: reportsData } = await supabase.from('reports').select('*');
-      if (reportsData) setReports(reportsData);
-      const { data: statsData } = await supabase.from('daily_stats').select('*');
-      if (statsData) setStats(statsData);
-      const { data: notifData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
-      if (notifData) setNotifications(notifData);
-      const { data: tickerData } = await supabase.from('ticker_messages').select('*').order('display_order', { ascending: true });
-      if (tickerData) setManualTickerMessages(tickerData.map((m: any) => ({ ...m, isManual: true })));
-
-      // New Modules Fetching (Best Effort)
-      const { data: chantiersData } = await supabase.from('chantiers').select('*');
-      if (chantiersData) setChantiers(chantiersData);
-      
-      const { data: transData } = await supabase.from('transactions').select('*');
-      if (transData) setTransactions(transData);
-      
-      const { data: empData } = await supabase.from('employees').select('*');
-      if (empData) setEmployees(empData);
-      
-      const { data: payrollData } = await supabase.from('payrolls').select('*');
-      if (payrollData) setPayrolls(payrollData);
-      
-      const { data: clientData } = await supabase.from('clients').select('*');
-      if (clientData) setClients(clientData);
-      
-      const { data: caisseData } = await supabase.from('caisse').select('*');
-      if (caisseData) setCaisse(caisseData);
-      
-      const { data: suppData } = await supabase.from('suppliers').select('*');
-      if (suppData) setSuppliers(suppData);
-      
-      const { data: purchData } = await supabase.from('purchases').select('*');
-      if (purchData) setPurchases(purchData);
-    };
-
-    fetchData();
-    const channels = supabase.channel('realtime-ebf')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'interventions' }, (payload) => {
-          if (payload.eventType === 'INSERT') setInterventions(prev => [...prev, payload.new as Intervention]);
-          else if (payload.eventType === 'UPDATE') setInterventions(prev => prev.map(i => i.id === payload.new.id ? payload.new as Intervention : i));
-          else if (payload.eventType === 'DELETE') setInterventions(prev => prev.filter(i => i.id !== payload.old.id));
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'stocks' }, (payload) => {
-          if (payload.eventType === 'INSERT') setStock(prev => [...prev, payload.new as StockItem]);
-          else if (payload.eventType === 'UPDATE') setStock(prev => prev.map(s => s.id === payload.new.id ? payload.new as StockItem : s));
-          else if (payload.eventType === 'DELETE') setStock(prev => prev.filter(s => s.id !== payload.old.id));
-      })
-      // REALTIME SUBSCRIPTION FOR REPORTS (SYNTHESIS DATA)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, (payload) => {
-          if (payload.eventType === 'INSERT') setReports(prev => [payload.new as DailyReport, ...prev]);
-          else if (payload.eventType === 'UPDATE') setReports(prev => prev.map(r => r.id === payload.new.id ? payload.new as DailyReport : r));
-          else if (payload.eventType === 'DELETE') setReports(prev => prev.filter(r => r.id !== payload.old.id));
-      })
-      // REALTIME SUBSCRIPTION FOR DAILY STATS (FINANCIAL SYNTHESIS)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_stats' }, (payload) => {
-          if (payload.eventType === 'INSERT') setStats(prev => [...prev, payload.new as StatData]);
-          else if (payload.eventType === 'UPDATE') {
-             const n = payload.new as StatData;
-             // Update logic assuming composite key (date + site) or replacement
-             setStats(prev => prev.map(s => (s.date === n.date && s.site === n.site) ? n : s));
-          }
-      })
-      // REALTIME TICKER MESSAGES (MANUAL FLASH INFO)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ticker_messages' }, (payload) => {
-          if (payload.eventType === 'INSERT') setManualTickerMessages(prev => [...prev, { ...payload.new, isManual: true } as TickerMessage]);
-          else if (payload.eventType === 'UPDATE') setManualTickerMessages(prev => prev.map(m => m.id === payload.new.id ? { ...payload.new, isManual: true } as TickerMessage : m));
-          else if (payload.eventType === 'DELETE') setManualTickerMessages(prev => prev.filter(m => m.id !== payload.old.id));
-      })
-      // REALTIME NOTIFICATIONS
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => {
-          if (payload.eventType === 'INSERT') setNotifications(prev => [payload.new as Notification, ...prev]);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channels); };
-  }, []);
-
-  useEffect(() => {
-    if (stats.length > 0) generateAutoTickerMessages(stats);
-    else setAutoTickerMessages([{ id: 'welcome-default', text: 'Bienvenue sur EBF Manager. Le système est prêt et connecté.', type: 'info', display_order: 0, isManual: false }]);
-    const interval = setInterval(() => { if (stats.length > 0) generateAutoTickerMessages(stats); }, 600000);
-    return () => clearInterval(interval);
-  }, [stats]);
-
   const generateAutoTickerMessages = (data: StatData[]) => {
       const messages: TickerMessage[] = [];
       const calcPerf = (items: StatData[]) => {
@@ -1314,6 +1222,97 @@ const AppContent = ({ session, onLogout, userRole, userProfile }: any) => {
       }
       setAutoTickerMessages(messages);
   };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Existing
+      const { data: intervData } = await supabase.from('interventions').select('*');
+      if (intervData) setInterventions(intervData);
+      const { data: stockData } = await supabase.from('stocks').select('*');
+      if (stockData) setStock(stockData);
+      const { data: techData } = await supabase.from('technicians').select('*');
+      if (techData) setTechnicians(techData);
+      const { data: reportsData } = await supabase.from('reports').select('*');
+      if (reportsData) setReports(reportsData);
+      const { data: statsData } = await supabase.from('daily_stats').select('*');
+      if (statsData) setStats(statsData);
+      const { data: notifData } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+      if (notifData) setNotifications(notifData);
+      const { data: tickerData } = await supabase.from('ticker_messages').select('*').order('display_order', { ascending: true });
+      if (tickerData) setManualTickerMessages(tickerData.map((m: any) => ({ ...m, isManual: true })));
+
+      // New Modules Fetching
+      const { data: chantiersData } = await supabase.from('chantiers').select('*');
+      if (chantiersData) setChantiers(chantiersData);
+      
+      const { data: transData } = await supabase.from('transactions').select('*');
+      if (transData) setTransactions(transData);
+      
+      const { data: empData } = await supabase.from('employees').select('*');
+      if (empData) setEmployees(empData);
+      
+      const { data: payrollData } = await supabase.from('payrolls').select('*');
+      if (payrollData) setPayrolls(payrollData);
+      
+      const { data: clientData } = await supabase.from('clients').select('*');
+      if (clientData) setClients(clientData);
+      
+      const { data: caisseData } = await supabase.from('caisse').select('*');
+      if (caisseData) setCaisse(caisseData);
+      
+      const { data: suppData } = await supabase.from('suppliers').select('*');
+      if (suppData) setSuppliers(suppData);
+      
+      const { data: purchData } = await supabase.from('purchases').select('*');
+      if (purchData) setPurchases(purchData);
+    };
+
+    fetchData();
+
+    // Helper for generic insert/update/delete
+    const updateState = (setter: any, payload: any) => {
+        if (payload.eventType === 'INSERT') setter((prev: any[]) => [...prev, payload.new]);
+        else if (payload.eventType === 'UPDATE') setter((prev: any[]) => prev.map(i => i.id === payload.new.id ? payload.new : i));
+        else if (payload.eventType === 'DELETE') setter((prev: any[]) => prev.filter(i => i.id !== payload.old.id));
+    };
+
+    const channels = supabase.channel('realtime-ebf')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'interventions' }, (payload) => updateState(setInterventions, payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stocks' }, (payload) => updateState(setStock, payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, (payload) => {
+          updateState(setReports, payload);
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'daily_stats' }, (payload) => {
+           if (payload.eventType === 'INSERT') setStats(prev => [...prev, payload.new as StatData]);
+           else if (payload.eventType === 'UPDATE') setStats(prev => prev.map(s => (s.date === payload.new.date && s.site === payload.new.site) ? payload.new as StatData : s));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ticker_messages' }, (payload) => {
+           if (payload.eventType === 'INSERT') setManualTickerMessages(prev => [...prev, { ...payload.new, isManual: true } as TickerMessage]);
+           else if (payload.eventType === 'UPDATE') setManualTickerMessages(prev => prev.map(m => m.id === payload.new.id ? { ...payload.new, isManual: true } as TickerMessage : m));
+           else if (payload.eventType === 'DELETE') setManualTickerMessages(prev => prev.filter(m => m.id !== payload.old.id));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, (payload) => updateState(setNotifications, payload))
+      
+      // NEW TABLES REALTIME
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chantiers' }, (payload) => updateState(setChantiers, payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload) => updateState(setTransactions, payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, (payload) => updateState(setEmployees, payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payrolls' }, (payload) => updateState(setPayrolls, payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, (payload) => updateState(setClients, payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'caisse' }, (payload) => updateState(setCaisse, payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, (payload) => updateState(setSuppliers, payload))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'purchases' }, (payload) => updateState(setPurchases, payload))
+
+      .subscribe();
+    return () => { supabase.removeChannel(channels); };
+  }, []);
+
+  useEffect(() => {
+    if (stats.length > 0) generateAutoTickerMessages(stats);
+    else setAutoTickerMessages([{ id: 'welcome-default', text: 'Bienvenue sur EBF Manager. Le système est prêt et connecté.', type: 'info', display_order: 0, isManual: false }]);
+    const interval = setInterval(() => { if (stats.length > 0) generateAutoTickerMessages(stats); }, 600000);
+    return () => clearInterval(interval);
+  }, [stats]);
 
   const combinedTickerMessages = useMemo(() => {
      if (manualTickerMessages.length === 0 && autoTickerMessages.length === 0) return [];
@@ -1390,12 +1389,12 @@ const AppContent = ({ session, onLogout, userRole, userProfile }: any) => {
      if (currentPath === '/quincaillerie/stocks') return <ModulePlaceholder title="Stocks Quincaillerie" subtitle="Inventaire" items={stock} onBack={() => handleNavigate('/quincaillerie')} color="bg-orange-600" currentSite={currentSite} onAdd={() => handleOpenAdd('stocks')} onDelete={(item: any) => handleOpenDelete(item, 'stocks')} readOnly={!canWrite} />;
      if (currentPath === '/equipe') return <ModulePlaceholder title="Notre Équipe" subtitle="Staff" items={technicians} onBack={() => handleNavigate('/')} color="bg-indigo-500" currentSite={currentSite} onAdd={() => handleOpenAdd('technicians')} onDelete={(item: any) => handleOpenDelete(item, 'technicians')} readOnly={!canWrite} />;
 
-     // NEWLY CONFIGURED ROUTES
+     // NEWLY CONFIGURED ROUTES (ACTIVE)
      if (currentPath === '/techniciens/chantiers') return <ModulePlaceholder title="Chantiers" subtitle="Suivi & Exécution" items={chantiers} onBack={() => handleNavigate('/techniciens')} color="bg-green-600" currentSite={currentSite} onAdd={() => handleOpenAdd('chantiers')} onDelete={(item: any) => handleOpenDelete(item, 'chantiers')} readOnly={!canWrite} />;
      if (currentPath === '/comptabilite/bilan') return <ModulePlaceholder title="Bilan Financier" subtitle="Journal des Transactions" items={transactions} onBack={() => handleNavigate('/comptabilite')} color="bg-green-600" currentSite={currentSite} currentPeriod={currentPeriod} onAdd={() => handleOpenAdd('transactions')} onDelete={(item: any) => handleOpenDelete(item, 'transactions')} readOnly={!canWrite} />;
      if (currentPath === '/comptabilite/rh') return <ModulePlaceholder title="Ressources Humaines" subtitle="Employés & Dossiers" items={employees} onBack={() => handleNavigate('/comptabilite')} color="bg-purple-600" currentSite={currentSite} onAdd={() => handleOpenAdd('employees')} onDelete={(item: any) => handleOpenDelete(item, 'employees')} readOnly={!canWrite} />;
      if (currentPath === '/comptabilite/paie') return <ModulePlaceholder title="Paie & Salaires" subtitle="Virements" items={payrolls} onBack={() => handleNavigate('/comptabilite')} color="bg-orange-500" currentPeriod={currentPeriod} onAdd={() => handleOpenAdd('payrolls')} onDelete={(item: any) => handleOpenDelete(item, 'payrolls')} readOnly={!canWrite} />;
-     if (currentPath === '/secretariat/planning') return <ModulePlaceholder title="Planning Équipe" subtitle="Vue d'ensemble Interventions" items={interventions} onBack={() => handleNavigate('/secretariat')} color="bg-indigo-500" currentSite={currentSite} currentPeriod={currentPeriod} readOnly={true} />; // Read only here usually
+     if (currentPath === '/secretariat/planning') return <ModulePlaceholder title="Planning Équipe" subtitle="Vue d'ensemble Interventions" items={interventions} onBack={() => handleNavigate('/secretariat')} color="bg-indigo-500" currentSite={currentSite} currentPeriod={currentPeriod} readOnly={true} />; 
      if (currentPath === '/secretariat/clients') return <ModulePlaceholder title="Gestion Clients" subtitle="Base de données" items={clients} onBack={() => handleNavigate('/secretariat')} color="bg-blue-500" currentSite={currentSite} onAdd={() => handleOpenAdd('clients')} onDelete={(item: any) => handleOpenDelete(item, 'clients')} readOnly={!canWrite} />;
      if (currentPath === '/secretariat/caisse') return <ModulePlaceholder title="Petite Caisse" subtitle="Entrées / Sorties" items={caisse} onBack={() => handleNavigate('/secretariat')} color="bg-gray-600" currentPeriod={currentPeriod} onAdd={() => handleOpenAdd('caisse')} onDelete={(item: any) => handleOpenDelete(item, 'caisse')} readOnly={!canWrite} />;
      if (currentPath === '/quincaillerie/fournisseurs') return <ModulePlaceholder title="Fournisseurs" subtitle="Partenaires" items={suppliers} onBack={() => handleNavigate('/quincaillerie')} color="bg-green-600" currentSite={currentSite} onAdd={() => handleOpenAdd('suppliers')} onDelete={(item: any) => handleOpenDelete(item, 'suppliers')} readOnly={!canWrite} />;
@@ -1407,7 +1406,13 @@ const AppContent = ({ session, onLogout, userRole, userProfile }: any) => {
   return (
     <div className={`flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300 ${darkMode ? 'dark' : ''}`}>
         <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-green-950 text-white transform transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:inset-auto shadow-2xl flex flex-col`}>
-            <div className="flex items-center justify-between h-20 px-6 bg-green-950/50"><div className="transform scale-75 origin-left bg-white p-2"><EbfLogo size="small" /></div><button onClick={() => setIsMenuOpen(false)} className="lg:hidden text-gray-400 hover:text-white"><X /></button></div>
+            {/* Logo SANS rounded-full - Square container */}
+            <div className="flex items-center justify-between h-20 px-6 bg-green-950/50">
+                <div className="transform scale-75 origin-left bg-white p-2">
+                    <EbfLogo size="small" />
+                </div>
+                <button onClick={() => setIsMenuOpen(false)} className="lg:hidden text-gray-400 hover:text-white"><X /></button>
+            </div>
             <div className="p-4 flex-1 overflow-y-auto">
                 <nav className="space-y-2">
                     {MAIN_MENU.map(item => (
