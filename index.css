@@ -1,0 +1,49 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.animate-ticker {
+  display: flex;
+  width: max-content;
+}
+.animate-ticker:hover {
+  animation-play-state: paused;
+}
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.submenu-enter { max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s ease-in-out; }
+.submenu-enter-active { max-height: 500px; opacity: 1; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #FF8C00; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ea580c; }
+
+/* Custom utilities for EBF Theme */
+body {
+    background-color: #f0fdf4; /* bg-green-50 slight tint */
+    color: #1f2937; /* text-gray-800 */
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.input-primary {
+  @apply bg-white text-gray-900 border-gray-200 focus:ring-2 focus:ring-ebf-orange focus:border-ebf-orange outline-none transition-all duration-200;
+}
+
+/* Fond moderne pour le Login - Version Riche */
+.bg-ebf-pattern {
+  background-color: #f0fdf4;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(255, 140, 0, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(34, 139, 34, 0.1) 0px, transparent 50%),
+    radial-gradient(#228B22 0.5px, transparent 0.5px);
+  background-size: 100% 100%, 100% 100%, 20px 20px;
+  position: relative;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}

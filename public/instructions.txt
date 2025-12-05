@@ -1,0 +1,5 @@
+
+POUR AJOUTER VOTRE LOGO :
+1. Renommez votre fichier image en "logo.png" (minuscules).
+2. Glissez-le dans ce dossier "public".
+3. L'application le détectera automatiquement au prochain rechargement.

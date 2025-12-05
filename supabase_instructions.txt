@@ -1,0 +1,13 @@
+
+INSTRUCTIONS OBLIGATOIRES POUR LA CONNEXION :
+
+1. Connectez-vous à votre compte Supabase (https://supabase.com/dashboard).
+2. Ouvrez votre Projet.
+3. Allez dans le menu de gauche : Authentication > Providers.
+4. Cliquez sur "Email".
+5. DÉCOCHEZ la case "Confirm email" (Confirm email addresses).
+6. Cliquez sur "Save".
+
+IMPORTANT :
+L'application a été mise à jour pour ne plus attendre de confirmation par email.
+Si vous ne désactivez pas cette option dans Supabase, les nouveaux utilisateurs verront un message d'erreur lors de l'inscription.
